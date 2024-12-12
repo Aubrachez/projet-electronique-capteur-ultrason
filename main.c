@@ -3,9 +3,11 @@
 float voltage;
 float temperature;
 int distance_max = 300;
+int distance_min=5;
 int pourcentage_progression=0;
 int valeur_division = 0;
 int valeur_curseur=0;
+int valeur_curseur_secondaire=0;
 /*!
  * Entry point of your source code
  */
@@ -531,18 +533,13 @@ void configure_GPIO_PA9_input(void) {
 // Configuration de TIM2 pour délai précis en µs
 void configure_TIM2(void) {
     RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;  // Activer l'horloge de TIM2
-    TIM2->PSC = 3;                    // Prescaler : 80 MHz / 80 = 1 MHz (1 µs)
+    TIM2->PSC = 3;                    // Prescaler
     TIM2->ARR = 0xFFFF;                    // Période maximale
     TIM2->CR1 |= TIM_CR1_CEN;              // Démarre le timer
 }
 
 // Fonction d'affichage (à adapter selon ton écran)
-void affichage(uint32_t counter) {
-    char str[20];
-    sprintf(str, "%lu", counter);  // Convertit le compteur en chaîne de caractères
-    aff(str);
-    // Code spécifique pour afficher `str` sur ton écran (ex. LCD)
-}
+
 
 // Fonction principale de récupération de distance
 
@@ -654,7 +651,56 @@ void progression(int distance){
 }
 
 void fonction_paramètre(){
+	valeur_curseur=2;
 	while(1){
+		//gestion curseur
+		switch (valeur_curseur) {
+		        case 2:
+		        	eff_curseur(12, 0);
+		        	eff_curseur(13, 4);
+		            curseur(8, 0);
+		            break;
+		        case 3:
+		        	eff_curseur(8, 0);
+					eff_curseur(13, 4);
+		            curseur(12, 0);
+		            break;
+		        case 4:
+		        	eff_curseur(8, 0);
+					eff_curseur(12,0);
+		            curseur(13, 4);
+		            break;
+		        default:
+		            // Gestion par défaut si nécessaire
+		            break;
+		    }
+
+		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0){
+
+					while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+					switch (valeur_curseur) {
+							        case 2:
+							        	valeur_curseur=3;
+							            break;
+							        case 3:
+							        	valeur_curseur=4;
+							            break;
+							        case 4:
+										valeur_curseur=2;
+										break;
+
+							        default:
+							            // Gestion par défaut si nécessaire
+							            break;
+							    }
+			}
+
+		if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==2 ) {
+					lcd_clear();
+					while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+					fct_gestion_valeur(); // Appeler la fonction paramètre
+				}
+
 		for(unsigned i =0; i<1e1;i++);
 		LCD_Adress(8);
 		for(unsigned i =0; i<1e1;i++);
@@ -670,13 +716,13 @@ void fonction_paramètre(){
 		for(unsigned i =0; i<1e1;i++);
 		LCD_Adress(13);
 		for(unsigned i =0; i<1e1;i++);
-		LCD_Adress(4);
+		LCD_Adress(5);
 		affichage_mot("retour");
-		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0) {
-				lcd_clear();
-				while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
-				menu_demarrage(); // Appeler la fonction chargement
-					        }
+//		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0) {
+//				lcd_clear();
+//				while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+//				menu_demarrage(); // Appeler la fonction chargement
+//					        }
 
 	}
 }
@@ -733,12 +779,110 @@ void menu_demarrage(){
 
 	}
 }
+void fct_gestion_valeur(){
+	lcd_clear();
+	while(1){
+		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0){
+					lcd_clear();
+					while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+					switch(valeur_curseur_secondaire)
+					{
+					case 0:
+						valeur_curseur_secondaire=1;
+
+
+						break;
+					case 1:
+						valeur_curseur_secondaire=2;
+
+						break;
+					case 2:
+						valeur_curseur_secondaire=0;
+
+						break;
+					}
+
+					}
+	switch (valeur_curseur) {
+		case 2:
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(8);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(1);
+			affichage_mot("distance$max");
+
+			char str[20];
+			sprintf(str, "%d", distance_max);
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(9);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(0);
+			affichage_mot(str);
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(12);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(1);
+			affichage_mot("plus");
+
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(9);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(5);
+			affichage_mot("moins");
+
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(13);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(5);
+			affichage_mot("retour");
+
+			switch(valeur_curseur_secondaire){
+				case 0:
+					curseur(12,0);
+					if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==1 ) {
+						while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+						distance_max=distance_max+20; // Appeler la fonction paramètre
+					}
+					break;
+				case 1:
+					curseur(9,4);
+					if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==1 ) {
+						while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+						distance_max=distance_max-20; // Appeler la fonction paramètre
+					}
+					break;
+				case 2:
+					curseur(13,4);
+					if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==1 ) {
+						while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+						valeur_curseur=2;
+						fonction_paramètre(); // Appeler la fonction paramètre
+					}
+					break;
+			}
 
 
 
 
 
 
+			break;
+		case 3:
+			valeur_curseur=4;
+			break;
+
+		default:
+			// Gestion par défaut si nécessaire
+			break;
+	}
+
+}
+}
 
 void init_lcd(){
 				LCD_Configuration(0b00000011);
@@ -788,4 +932,13 @@ void curseur(int x, int y){
 		LCD_Adress(y);
 		LCD_Communication(2);
 		LCD_Communication(10);
+}
+
+void eff_curseur(int x, int y){
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(x);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(y);
+		LCD_Communication(2);
+		LCD_Communication(0);
 }
