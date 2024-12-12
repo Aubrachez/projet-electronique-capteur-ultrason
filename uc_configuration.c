@@ -125,6 +125,20 @@ void SetupGPIOs()
 		GPIOA->MODER |= GPIO_MODER_MODE0_Msk;//Selection du mode analogique ('11')
 		GPIOA->ASCR  |= GPIO_ASCR_ASC1;//Connection entre l'adc et la pin d'entrée
 	//--------------------------------------------------
+
+	// Set the pin PA4 as an input
+		 // 2. Configurer PA4 en mode "entrée" dans le registre MODER
+		    GPIOA->MODER &= ~(3U << (4 * 2)); // PA4: mettre les bits [9:8] à 00 (mode d'entrée)
+
+		    GPIOA->PUPDR &= ~(3U << (4 * 2)); // PA4: clear bits [9:8]
+		      GPIOA->PUPDR |= (2U << (4 * 2));  // PA4: mettre les bits [9:8] à 10 (pull-down)
+
+		      // Set the pin PB0 as an input
+		      		 // 2. Configurer PA4 en mode "entrée" dans le registre MODER
+		      		 GPIOB->MODER &= ~(3U << (0 * 2)); // PA4: mettre les bits [9:8] à 00 (mode d'entrée)
+
+		      		 GPIOB->PUPDR &= ~(3U << (0 * 2)); // PA4: clear bits [9:8]
+		      		 GPIOB->PUPDR |= (2U << (0 * 2));  // PA4: mettre les bits [9:8] à 10 (pull-down)
 }
 
 void InitializeTimer3() {
