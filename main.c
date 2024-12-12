@@ -580,19 +580,28 @@ void configure_TIM2(void) {
 				for(unsigned i =0; i<1e1;i++);
 				LCD_Adress(3);
 				affichage_mot("cm");
+
 				if(distance_cm <=distance_min){
 						for(unsigned i =0; i<1;i++);
 						LCD_Adress(9);
 						for(unsigned i =0; i<1e1;i++);
 						LCD_Adress(4);
-						affichage_mot("bip$bip");
-					}else{
-						for(unsigned i =0; i<1;i++);
-						LCD_Adress(9);
-						for(unsigned i =0; i<1e1;i++);
-						LCD_Adress(4);
-						affichage_mot("$$$$$$$");
+						affichage_mot("bip$bip$bip");
 					}
+				if(distance_cm <=2*distance_min){
+					for(unsigned i =0; i<1;i++);
+					LCD_Adress(9);
+					for(unsigned i =0; i<1e1;i++);
+					LCD_Adress(4);
+					affichage_mot("bip$bip");
+				}
+				if(distance_cm <=3*distance_min){
+					for(unsigned i =0; i<1;i++);
+					LCD_Adress(9);
+					for(unsigned i =0; i<1e1;i++);
+					LCD_Adress(4);
+					affichage_mot("bip");
+				}
 				progression(distance_cm);
 
 
