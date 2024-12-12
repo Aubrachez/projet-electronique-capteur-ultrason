@@ -2,7 +2,9 @@
 #include "uc_configuration.h"
 float voltage;
 float temperature;
-
+int distance_max = 300;
+int pourcentage_progression=0;
+int valeur_division = 0;
 /*!
  * Entry point of your source code
  */
@@ -45,10 +47,12 @@ int main()
     						LCD_Configuration(0b00000000);//Display ON/OFF Control
     						LCD_Configuration(0b00001100);
     		test++;
-    		recuperation_temperature();
+
+    		//recuperation_temperature();
 
 //
     	}
+    	fonction_chargement();
     }
 }
 
@@ -73,9 +77,10 @@ void recuperation_temperature(){
 
 	// Lire et retourner la valeur convertie
 	volatile uint32_t temp =(ADC1->DR);// Récupérer la valeur numérique
-	float voltage = (temp * 5) / 4095.0;
-	char valeur[100];
-	sprintf(valeur, "%lu", ADC1->DR);  // Convertit le compteur en chaîne de caractères
+	float voltage = (ADC1->DR * 4095) / 5000;
+	char valeur[3];
+	ADC1->SQR1;
+	sprintf(valeur, "%lu",ADC1->DR);  // Convertit le compteur en chaîne de caractères
 	LCD_Adress(8);
 	for(unsigned i =0; i<1e1;i++);
 	LCD_Adress(0);
@@ -481,72 +486,8 @@ void fonction_chargement(){
 
 	while(1) {
 		 for (unsigned i = 0; i < 100000; i++);
-		// Vérifie si PC13 est à l'état haut (non pressé, car le bouton tire vers 0 lorsqu'appuyé)
-			 if(GPIOC->IDR & GPIO_IDR_ID13){}
-			 else// PC13 à l'état bas
-			        {
-			            // Appel de la fonction lorsque le bouton n'est pas pressé (PC13 haut)
-			            menu_demarrage();
-
-			            // Délai pour éviter des appels multiples inutiles
-			            for (unsigned i = 0; i < 1000; i++); // Attendre ~quelques ms
-			        }
-	for (int place = 4; place <= 22; place++) {
-		if(place<=15){
-					LCD_Adress(13);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(place);
-					for(unsigned i =0; i<1e1;i++);
-					affichage_mot(")");
-					for(unsigned i =0; i<1e4;i++);
-		}
-		if(place>=15){
-						LCD_Adress(14);
-						for(unsigned i =0; i<1e1;i++);
-						LCD_Adress(place-15);
-						for(unsigned i =0; i<1e1;i++);
-						affichage_mot(")");
-						for(unsigned i =0; i<1e4;i++);
-					}
-
-				}
-	calcul_dist();
-	//décroissance
-	for (int place = 23; place >= 4; place--) {
-				if(place<=15){
-							LCD_Adress(13);
-							for(unsigned i =0; i<1e1;i++);
-							LCD_Adress(place);
-							for(unsigned i =0; i<1e1;i++);
-							affichage_mot("$");
-							for(unsigned i =0; i<1e4;i++);
-				}
-				if(place>=15){
-								LCD_Adress(14);
-								for(unsigned i =0; i<1e1;i++);
-								LCD_Adress(place-16);
-								for(unsigned i =0; i<1e1;i++);
-								affichage_mot("$");
-								for(unsigned i =0; i<1e4;i++);
-							}
-
-						}
-						//for(unsigned i =0; i<1;i++);
-
-						//LCD_Adress(8);
-						//for(unsigned i =0; i<1e1;i++);
-						//LCD_Adress(0);
-						//TIM2->CR1 |= TIM_CR1_CEN_Msk;
-
-						//char str[20];
-						//uint32_t timer_value = TIM2->CNT;
-						//sprintf(str, "%d", timer_value);
-						//affichage_mot(str);
-						//TIM2->CNT = 0;
-	calcul_dist();
-
-}
-
+		 calcul_dist();
+			}
 }
 
 void aff(const char* str){
@@ -558,63 +499,6 @@ void aff(const char* str){
 }
 
 
-void tiktok(){
-
-
-	// la fréquence de la puce est de 4MHz
-	// donc en 1µs elle fait 4 actions
-
-	//Le capteur PING)) détecte les objets en émettant une courte salve d'ultrasons et en « écoutant » l'écho.
-	//Sous le contrôle d'un microcontrôleur hôte (impulsion de déclenchement), le capteur émet une brève salve d'ultrasons de 40 kHz.
-	//Cette salve se propage dans l'air, frappe un objet et rebondit vers le capteur.   Le capteur PING)))
-	//fournit une impulsion de sortie à l'hôte qui se termine lorsque l'écho est détecté.
-	//La largeur de cette impulsion correspond donc à la distance de la cible.
-
-	// le pin de controle est D8 = PA9
-	// objectif : mettre le pin en mode sortie emetre un signal haut pendant 5 µs seconde
-	// le pulse va de 15µs à 18,5 ms
-	//il y a un delay de
-	//ensuite passer le pin en mode in et lancé le compteur.
-	//
-	// il faut attendre 200µs entre deux mesure dans notre cas on fera une mesure toute les 100 000µs
-
-	//PA9 en mode sortie
-	GPIOA->MODER &= ~GPIO_MODER_MODE9_Msk;
-	GPIOA->MODER |= GPIO_MODER_MODE9_0;
-
-	// Mettre PA9 à l'état haut
-	GPIOA->BSRR = GPIO_BSRR_BS9;
-
-	// attendre 2µs
-	for(unsigned i =0; i<10;i++);
-	// Mettre le pin à 0
-	GPIOA->BSRR = GPIO_BSRR_BR9;
-	for(unsigned i =0; i<2;i++);
-
-	// mettre le pin en mode in
-	GPIOA->MODER &= ~GPIO_MODER_MODE9_Msk;
-
-	// attendre 750 µs
-	for(unsigned i =0; i<3000;i++);
-	//lancé le timer 3
-
-	//TIM3->CR1 |= TIM_CR1_CEN_Msk;
-	//commencé à écouté si un signal reviens
-
-	// fin signal detecté = timer fin
-	// récupérer valeur timer
-	// convertir valeur en distance
-	//ajuster distance avec température ambiante
-	//affiché distance calculé
-	// reinitialiser tim3
-
-	//attendre 0,1s
-	//14073 de tim3 = +- 5,73 sec
-
-
-
-
-}
 
 
 void calcul_dist(){
@@ -688,7 +572,7 @@ void affichage(uint32_t counter) {
             LCD_Adress(0);
             affichage_mot("$$$$$$$$$$$$$$");
             char str[20];
-            if (distance_cm >= 20 ){
+            if (distance_cm >= 5 && distance_cm <= distance_max ){
             	sprintf(str, "%d", distance_cm);
 				aff(str);  // Affiche le nombre de µs du pulse détecté
 				for(unsigned i =0; i<1;i++);
@@ -696,7 +580,7 @@ void affichage(uint32_t counter) {
 				for(unsigned i =0; i<1e1;i++);
 				LCD_Adress(3);
 				affichage_mot("cm");
-				maj_progression();
+
 				progression(distance_cm);
             }
             else{
@@ -715,165 +599,79 @@ void affichage(uint32_t counter) {
 }
 
 void progression(int distance){
-	if (distance > 10) {
-		for(unsigned i =0; i<1;i++);
-		LCD_Adress(12);
-		for(unsigned i =0; i<1e1;i++);
-		LCD_Adress(0);
-		affichage_mot(")");
-	}
-	if (distance > 20){
-		for(unsigned i =0; i<1;i++);
-		LCD_Adress(12);
-		for(unsigned i =0; i<1e1;i++);
-		LCD_Adress(1);
-	    affichage_mot(")");
-	}
-	if (distance > 30){
-			for(unsigned i =0; i<1;i++);
-			LCD_Adress(12);
-			for(unsigned i =0; i<1e1;i++);
-			LCD_Adress(2);
-		    affichage_mot(")");
-		}
-	if (distance > 40){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(3);
-			    affichage_mot(")");
-			}
-	if (distance > 50){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(4);
-			    affichage_mot(")");
-			}
-	if (distance > 60){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(5);
-			    affichage_mot(")");
-			}
-	if (distance > 70){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(6);
-			    affichage_mot(")");
-			}
-	if (distance > 80){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(7);
-			    affichage_mot(")");
-			}
-	if (distance > 90){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(8);
-			    affichage_mot(")");
-			}
-	if (distance > 100){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(9);
-			    affichage_mot(")");
-			}
-	if (distance > 110){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(10);
-			    affichage_mot(")");
-			}
-	if (distance > 120){
+	pourcentage_progression = distance_max / 20;
+	valeur_division = distance / pourcentage_progression;
+	char str[20];
+	sprintf(str, "%lu",valeur_division );  // Convertit le compteur en chaîne de caractères
+	// on clear l'affichage de la mesure
+	for (int i=0; i<=15; i++){
+						for(unsigned i =0; i<1;i++);
+						LCD_Adress(12);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(i);
+						affichage_mot("$");
+				}
+				for (int i=0; i<4; i++){
+							for(unsigned i =0; i<1;i++);
+							LCD_Adress(13);
+							for(unsigned i =0; i<1e1;i++);
+							LCD_Adress(i);
+							affichage_mot("$");
+					}
+	if(valeur_division <=4 ){
+		for (int i=0; i<=15; i++){
 					for(unsigned i =0; i<1;i++);
 					LCD_Adress(12);
 					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(11);
-				    affichage_mot(")");
-				}
-	if (distance > 130){
-					for(unsigned i =0; i<1;i++);
-					LCD_Adress(12);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(12);
-				    affichage_mot(")");
-				}
-	if (distance > 140){
-					for(unsigned i =0; i<1;i++);
-					LCD_Adress(12);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(13);
-				    affichage_mot(")");
-				}
-	if (distance > 150){
-					for(unsigned i =0; i<1;i++);
-					LCD_Adress(12);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(14);
-				    affichage_mot(")");
-				}
-	if (distance > 160){
-					for(unsigned i =0; i<1;i++);
-					LCD_Adress(12);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(15);
-				    affichage_mot(")");
-				}
-	if (distance > 170){
+					LCD_Adress(i);
+					affichage_mot(")");
+			}
+			for (int i=0; i<(4-valeur_division); i++){
 						for(unsigned i =0; i<1;i++);
 						LCD_Adress(13);
 						for(unsigned i =0; i<1e1;i++);
-						LCD_Adress(0);
-					    affichage_mot(")");
-					}
-	if (distance > 180){
-							for(unsigned i =0; i<1;i++);
-							LCD_Adress(13);
-							for(unsigned i =0; i<1e1;i++);
-							LCD_Adress(1);
-						    affichage_mot(")");
-						}
-	if (distance > 190){
-							for(unsigned i =0; i<1;i++);
-							LCD_Adress(13);
-							for(unsigned i =0; i<1e1;i++);
-							LCD_Adress(2);
-						    affichage_mot(")");
-						}
-	if (distance > 200){
-							for(unsigned i =0; i<1;i++);
-							LCD_Adress(13);
-							for(unsigned i =0; i<1e1;i++);
-							LCD_Adress(3);
-						    affichage_mot(")");
-						}
+						LCD_Adress(i);
+						affichage_mot(")");
+				}
+	}else{
+		for (int i=0; i<=(19-valeur_division); i++){
+		for(unsigned i =0; i<1;i++);
+		LCD_Adress(12);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(i);
+		affichage_mot(")");
 }
-
-void maj_progression(){
-	for(unsigned place =0; place<16;place++){
-									for(unsigned i =0; i<1;i++);
-									LCD_Adress(12);
-									for(unsigned i =0; i<1e1;i++);
-									LCD_Adress(place);
-								    affichage_mot("$");
+}
+	/*for (int i=0; i<=15; i++){
+			for(unsigned i =0; i<1;i++);
+			LCD_Adress(12);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(i);
+			affichage_mot(")");
 	}
-	for(unsigned place =0; place<4;place++){
-										for(unsigned i =0; i<1;i++);
-										LCD_Adress(13);
-										for(unsigned i =0; i<1e1;i++);
-										LCD_Adress(place);
-									    affichage_mot("$");
-		}
+	for (int i=0; i<4; i++){
+				for(unsigned i =0; i<1;i++);
+				LCD_Adress(13);
+				for(unsigned i =0; i<1e1;i++);
+				LCD_Adress(i);
+				affichage_mot(")");
+		}*/
+	for(unsigned i =0; i<1;i++);
+				LCD_Adress(12);
+				for(unsigned i =0; i<1e1;i++);
+				LCD_Adress(4);
+				affichage_mot(str);
+
+
+
+
+
+
+
 
 }
+
+
 
 void menu_demarrage(){
 	while(1){
@@ -898,12 +696,7 @@ void menu_demarrage(){
 
 
 void toto(){
-	LCD_Adress(8);
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(0);
-	for(unsigned i =0; i<1e1;i++);
-	affichage_mot("hello$world");
-	for(unsigned i =0; i<1e4;i++);
+
 }
 
 void init_lcd(){
