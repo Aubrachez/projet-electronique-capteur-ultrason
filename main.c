@@ -48,11 +48,13 @@ int main()
     						LCD_Configuration(0b00001100);
     		test++;
 
-    		//recuperation_temperature();
 
 //
     	}
-    	fonction_chargement();
+
+
+    		menu_demarrage();
+
     }
 }
 
@@ -586,6 +588,13 @@ void affichage(uint32_t counter) {
             else{
             	aff("out$of$range");
             }
+            //quand on appui sur le bouton bleu on lance la fonction calcul distance
+            	if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 || (GPIOB->IDR & GPIO_IDR_ID0) != 0) {
+            		lcd_clear();
+            		while((GPIOA->IDR & GPIO_IDR_ID4) != 0 || (GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+            		            menu_demarrage(); // Appeler la fonction chargement
+            		        }
+
 
             return;
         }
@@ -601,8 +610,7 @@ void affichage(uint32_t counter) {
 void progression(int distance){
 	pourcentage_progression = distance_max / 20;
 	valeur_division = distance / pourcentage_progression;
-	char str[20];
-	sprintf(str, "%lu",valeur_division );  // Convertit le compteur en chaîne de caractères
+
 	// on clear l'affichage de la mesure
 	for (int i=0; i<=15; i++){
 						for(unsigned i =0; i<1;i++);
@@ -642,42 +650,41 @@ void progression(int distance){
 		affichage_mot(")");
 }
 }
-	/*for (int i=0; i<=15; i++){
-			for(unsigned i =0; i<1;i++);
-			LCD_Adress(12);
-			for(unsigned i =0; i<1e1;i++);
-			LCD_Adress(i);
-			affichage_mot(")");
-	}
-	for (int i=0; i<4; i++){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(13);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(i);
-				affichage_mot(")");
-		}*/
-	for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(4);
-				affichage_mot(str);
-
-
-
-
-
-
-
-
 }
 
+void fonction_paramètre(){
+	while(1){
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(8);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(1);
+		affichage_mot("distance$max");
 
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(12);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(1);
+		affichage_mot("distance$min");
+
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(13);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(4);
+		affichage_mot("retour");
+		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0) {
+				lcd_clear();
+				while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+				menu_demarrage(); // Appeler la fonction chargement
+					        }
+
+	}
+}
 
 void menu_demarrage(){
-	while(1){
 
 
 
+while(1){
 	for(unsigned i =0; i<1e1;i++);
 	LCD_Adress(12);
 	for(unsigned i =0; i<1e1;i++);
@@ -690,14 +697,26 @@ void menu_demarrage(){
 	LCD_Adress(5);
 	affichage_mot("parametres");
 
+	//quand on appui sur le bouton bleu on lance la fonction calcul distance
+	if ((GPIOA->IDR & GPIO_IDR_ID4) != 0) {
+		lcd_clear();
+		while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+		            fonction_chargement(); // Appeler la fonction chargement
+		        }
+	    	    //quand on appui sur le bouton rouge on lance la fonction parametre
+
+	if ((GPIOB->IDR & GPIO_IDR_ID0) != 0) {
+		lcd_clear();
+		while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+			            fonction_paramètre(); // Appeler la fonction chargement
+			        }
 }
-}
-
-
-
-void toto(){
 
 }
+
+
+
+
 
 void init_lcd(){
 				LCD_Configuration(0b00000011);
@@ -727,3 +746,15 @@ void init_lcd(){
 				LCD_Configuration(0b00001100);
 }
 
+void lcd_clear(){
+	for(unsigned b =8; b<16;b++){
+		for(unsigned a =0; a<16;a++){
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(b);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(a);
+			affichage_mot("$");
+		}
+	}
+
+}
