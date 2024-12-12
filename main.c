@@ -3,7 +3,7 @@
 float voltage;
 float temperature;
 int distance_max = 300;
-int distance_min=5;
+int distance_min=25;
 int pourcentage_progression=0;
 int valeur_division = 0;
 int valeur_curseur=0;
@@ -572,7 +572,7 @@ void configure_TIM2(void) {
             LCD_Adress(0);
             affichage_mot("$$$$$$$$$$$$$$");
             char str[20];
-            if (distance_cm >= 5 && distance_cm <= distance_max ){
+
             	sprintf(str, "%d", distance_cm);
 				aff(str);  // Affiche le nombre de µs du pulse détecté
 				for(unsigned i =0; i<1;i++);
@@ -580,12 +580,22 @@ void configure_TIM2(void) {
 				for(unsigned i =0; i<1e1;i++);
 				LCD_Adress(3);
 				affichage_mot("cm");
-
+				if(distance_cm <=distance_min){
+						for(unsigned i =0; i<1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(4);
+						affichage_mot("bip$bip");
+					}else{
+						for(unsigned i =0; i<1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(4);
+						affichage_mot("$$$$$$$");
+					}
 				progression(distance_cm);
-            }
-            else{
-            	aff("out$of$range");
-            }
+
+
             //quand on appui sur le bouton bleu on lance la fonction calcul distance
             	if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 || (GPIOB->IDR & GPIO_IDR_ID0) != 0) {
             		lcd_clear();
@@ -606,9 +616,17 @@ void configure_TIM2(void) {
 }
 
 void progression(int distance){
-	pourcentage_progression = distance_max / 20;
-	valeur_division = distance / pourcentage_progression;
+	pourcentage_progression = (distance_max-distance_min) / 20;
+	valeur_division = (distance-distance_min) / pourcentage_progression;
 
+
+	if(valeur_division >0){
+			for(unsigned i =0; i<1;i++);
+			LCD_Adress(9);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(4);
+			affichage_mot("$$$$$$$");
+		}
 	// on clear l'affichage de la mesure
 	for (int i=0; i<=15; i++){
 						for(unsigned i =0; i<1;i++);
@@ -624,6 +642,7 @@ void progression(int distance){
 							LCD_Adress(i);
 							affichage_mot("$");
 					}
+
 	if(valeur_division <=4 ){
 		for (int i=0; i<=15; i++){
 					for(unsigned i =0; i<1;i++);
@@ -738,6 +757,7 @@ void fonction_paramètre(){
 }
 
 void menu_demarrage(){
+	valeur_curseur=0;
 	while(1){
 		for(unsigned i =0; i<1e1;i++);
 		LCD_Adress(12);
