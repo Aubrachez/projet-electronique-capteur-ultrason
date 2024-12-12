@@ -5,6 +5,7 @@ float temperature;
 int distance_max = 300;
 int pourcentage_progression=0;
 int valeur_division = 0;
+int valeur_curseur=0;
 /*!
  * Entry point of your source code
  */
@@ -681,38 +682,59 @@ void fonction_paramètre(){
 }
 
 void menu_demarrage(){
+	while(1){
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(12);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(1);
+		affichage_mot("lancer$le$compteur");
+
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(13);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(5);
+		affichage_mot("parametres");
+
+		//gestion du curseur
+		if (valeur_curseur==0){
+			curseur(12,0);
+		}
+
+		if (valeur_curseur==1){
+				curseur(13,4);
+			}
+		//quand on appui sur le bouton bleu on lance une fonction
+		if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==0 ) {
+			lcd_clear();
+			while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+			fonction_chargement(); // Appeler la fonction chargement
+		}
+
+		if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==1 ) {
+			lcd_clear();
+			while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+			fonction_paramètre(); // Appeler la fonction paramètre
+		}
+
+		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0){
+			lcd_clear();
+			while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+			if(valeur_curseur==0)
+			{
+				valeur_curseur++;
+			}
+			else
+			{
+				valeur_curseur--;
+			}
+			}
 
 
 
-while(1){
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(12);
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(1);
-	affichage_mot("lancer$le$compteur");
-
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(13);
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(5);
-	affichage_mot("parametres");
-
-	//quand on appui sur le bouton bleu on lance la fonction calcul distance
-	if ((GPIOA->IDR & GPIO_IDR_ID4) != 0) {
-		lcd_clear();
-		while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
-		            fonction_chargement(); // Appeler la fonction chargement
-		        }
-	    	    //quand on appui sur le bouton rouge on lance la fonction parametre
-
-	if ((GPIOB->IDR & GPIO_IDR_ID0) != 0) {
-		lcd_clear();
-		while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
-			            fonction_paramètre(); // Appeler la fonction chargement
-			        }
+	}
 }
 
-}
+
 
 
 
@@ -757,4 +779,13 @@ void lcd_clear(){
 		}
 	}
 
+}
+
+void curseur(int x, int y){
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(x);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(y);
+		LCD_Communication(2);
+		LCD_Communication(10);
 }
