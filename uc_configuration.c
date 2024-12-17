@@ -74,26 +74,41 @@ void SetupGPIOs()
 	//--------------------------------------------------
 
 	//Configure Rotary Encoder calibre de mesure
-		//------Configure le signal A sur PC10
-		GPIOC->MODER &= ~GPIO_MODER_MODE10_Msk;//Set PC10 en Input ('00')
-		GPIOC->PUPDR &= ~GPIO_PUPDR_PUPD10_Msk;
-		GPIOC->PUPDR |= GPIO_PUPDR_PUPD10_0;//Resistance de pull up pour l'input ('01')
-		//------Configure le signal B sur PC12
-		GPIOC->MODER &= ~GPIO_MODER_MODE12_Msk;//Set PC12 en Input ('00')
-		GPIOC->PUPDR &= ~GPIO_PUPDR_PUPD12_Msk;
-		GPIOC->PUPDR |= GPIO_PUPDR_PUPD12_0;//Resistance de pull up pour l'input ('01')
-	//--------------------------------------------------
+		//------Configure le signal B sur PC7
+		GPIOC->MODER &= ~GPIO_MODER_MODE7_Msk; // Set PC7 en Input ('00')
+		GPIOC->PUPDR &= ~GPIO_PUPDR_PUPD7_Msk;
+		GPIOC->PUPDR |= GPIO_PUPDR_PUPD7_0;    // Résistance de pull-up pour l'input ('01')
+		//--------------------------------------------------
 
-	//Configure PC10 en EXTI (interruption externe)
-		SYSCFG->EXTICR[2] &= ~SYSCFG_EXTICR3_EXTI10_Msk;//Clear EXTI10
-		SYSCFG->EXTICR[2] |= SYSCFG_EXTICR3_EXTI10_PC;//Set EXTI source sur PC10
+		// Configure PC7 en EXTI (interruption externe)
+		SYSCFG->EXTICR[1] &= ~SYSCFG_EXTICR2_EXTI7_Msk; // Clear EXTI7
+		SYSCFG->EXTICR[1] |= SYSCFG_EXTICR2_EXTI7_PC;  // Set EXTI source sur PC7
 
-		EXTI->FTSR1 |= EXTI_FTSR1_FT10;//Configure le front descendant en EXTI
+		EXTI->FTSR1 |= EXTI_FTSR1_FT7;  // Configure le front descendant en EXTI
+		EXTI->RTSR1 &= ~EXTI_RTSR1_RT7; // Désactive le front montant en EXTI
 
-		EXTI->IMR1 |= EXTI_IMR1_IM10;//Unmask EXTI10
+		EXTI->IMR1 |= EXTI_IMR1_IM7; // Unmask EXTI7
 
-		NVIC_EnableIRQ(EXTI15_10_IRQn);//Active l'interruption EXTI15_10 in NVIC (gestion des interruptions emboitées)
-	//--------------------------------------------------
+		NVIC_EnableIRQ(EXTI9_5_IRQn); // Active l'interruption EXTI9_5 dans le NVIC (gestion des interruptions emboîtées)
+		//--------------------------------------------------
+
+		//------Configure le signal B sur PC7
+				GPIOC->MODER &= ~GPIO_MODER_MODE7_Msk; // Set PC7 en Input ('00')
+				GPIOC->PUPDR &= ~GPIO_PUPDR_PUPD7_Msk;
+				GPIOC->PUPDR |= GPIO_PUPDR_PUPD7_0;    // Résistance de pull-up pour l'input ('01')
+				//--------------------------------------------------
+
+				// Configure PC7 en EXTI (interruption externe)
+				SYSCFG->EXTICR[1] &= ~SYSCFG_EXTICR2_EXTI7_Msk; // Clear EXTI7
+				SYSCFG->EXTICR[1] |= SYSCFG_EXTICR2_EXTI7_PC;  // Set EXTI source sur PC7
+
+				EXTI->FTSR1 |= EXTI_FTSR1_FT7;  // Configure le front descendant en EXTI
+				EXTI->RTSR1 &= ~EXTI_RTSR1_RT7; // Désactive le front montant en EXTI
+
+				EXTI->IMR1 |= EXTI_IMR1_IM7; // Unmask EXTI7
+
+				NVIC_EnableIRQ(EXTI9_5_IRQn); // Active l'interruption EXTI9_5 dans le NVIC (gestion des interruptions emboîtées)
+				//--------------------------------------------------
 
 
 	//Configuration de l'écran LCD
@@ -139,6 +154,28 @@ void SetupGPIOs()
 
 		      		 GPIOB->PUPDR &= ~(3U << (0 * 2)); // PA4: clear bits [9:8]
 		      		 GPIOB->PUPDR |= (2U << (0 * 2));  // PA4: mettre les bits [9:8] à 10 (pull-down)
+
+		      		//Configure Rotary Encoder Horizontal scale
+		      				//------Configure A signal on PC10
+		      				GPIOC->MODER &= ~GPIO_MODER_MODE10_Msk;//Set PC10 as an Input ('00')
+		      				GPIOC->PUPDR &= ~GPIO_PUPDR_PUPD10_Msk;
+		      				GPIOC->PUPDR |= GPIO_PUPDR_PUPD10_0;//Set a pull up resistance to the input ('01')
+		      				//------Configure B signal on PC12
+		      				GPIOC->MODER &= ~GPIO_MODER_MODE12_Msk;//Set PC12 as an Input ('00')
+		      				GPIOC->PUPDR &= ~GPIO_PUPDR_PUPD12_Msk;
+		      				GPIOC->PUPDR |= GPIO_PUPDR_PUPD12_0;//Set a pull up resistance to the input ('01')
+		      			//--------------------------------------------------
+
+		      			//Configure PC10 as an EXTI source
+		      				SYSCFG->EXTICR[2] &= ~SYSCFG_EXTICR3_EXTI10_Msk;//Clear EXTI10
+		      				SYSCFG->EXTICR[2] |= SYSCFG_EXTICR3_EXTI10_PC;//Set EXTI source on PC10
+
+		      				EXTI->FTSR1 |= EXTI_FTSR1_FT10;//Select Rising edge trigger as EXTI
+
+		      				EXTI->IMR1 |= EXTI_IMR1_IM10;//Unmask EXTI10
+
+		      				NVIC_EnableIRQ(EXTI15_10_IRQn);//Enable interrupt EXTI15_10 in NVIC
+		      			//--------------------------------------------------
 }
 
 void InitializeTimer3() {
