@@ -54,7 +54,12 @@ int main()
 
 //
     	}
-
+    	void EXTI9_5_IRQHandler(void) {
+    	    if (EXTI->PR1 & EXTI_PR1_PIF7) { // Vérifier si EXTI7 a généré l'interruption
+    	        EXTI->PR1 |= EXTI_PR1_PIF7;  // Effacer le drapeau d'interruption
+    	        menu_demarrage();            // Appeler la fonction
+    	    }
+    	}
 
     		menu_demarrage();
 
@@ -677,10 +682,19 @@ void progression(int distance){
 }
 }
 }
-
+void toto(){
+	lcd_clear();
+	for(unsigned i =0; i<1;i++);
+			LCD_Adress(8);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(0);
+			affichage_mot("toto");
+}
 void fonction_paramètre(){
 	valeur_curseur=2;
 	while(1){
+
+
 		//gestion curseur
 		switch (valeur_curseur) {
 		        case 2:
@@ -766,8 +780,18 @@ void fonction_paramètre(){
 }
 
 void menu_demarrage(){
+
+
+	lcd_clear();
+
 	valeur_curseur=0;
 	while(1){
+		void EXTI9_5_IRQHandler(void) {
+						    if (EXTI->PR1 & EXTI_PR1_PIF7) {   // Vérifier si l'interruption provient de PC7
+						        EXTI->PR1 |= EXTI_PR1_PIF7;    // Effacer le drapeau d'interruption
+						        toto();                        // Appeler la fonction
+						    }
+						}
 		for(unsigned i =0; i<1e1;i++);
 		LCD_Adress(12);
 		for(unsigned i =0; i<1e1;i++);
@@ -928,7 +952,7 @@ void fct_gestion_valeur_max(){
 }
 }
 
-fct_gestion_valeur_min(){
+void fct_gestion_valeur_min(){
 
 	lcd_clear();
 	valeur_curseur_secondaire=0;
@@ -1098,3 +1122,36 @@ void eff_curseur(int x, int y){
 		LCD_Communication(2);
 		LCD_Communication(0);
 }
+
+void EXTI15_10_IRQHandler()//Interrupt for Rotary Encoder
+{
+	if(GPIOC->IDR & GPIO_IDR_ID12_Msk)//If B signal is High level
+	{
+		//Clock wise Rotation
+
+		if(1==1)
+		{
+		toto();		}
+		else
+		{
+
+			toto();
+		}
+	}
+	else
+	{
+		//Unclock wise Rotation
+
+		if(1==1)
+		{
+			toto();
+		}
+		else
+		{
+
+			toto();
+		}
+	}
+	EXTI->PR1 = EXTI_PR1_PIF10;//Clear flag
+}
+
