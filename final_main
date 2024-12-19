@@ -6,7 +6,7 @@
 // Buzzer = PA5
 
 
-/*! 
+/*!
  * Entry point of your source code
  */
 // Mes variables marius
@@ -27,13 +27,7 @@ int pourcentage_progression=0;
 int valeur_division = 0;
 int valeur_curseur=0;
 int valeur_curseur_secondaire=0;
-uint8_t start_measurement = 1; // Flag pour démarrer une nouvelle mesure
-volatile distance_cm = 300;     // Distance calculée
-uint8_t echo_valid = 0;       // Indique qu'une distance valide est prête
-uint8_t sensor_error = 0;     // Erreur (défaillance ou hors portée)
-float temperature = 0.0;  // Stocke la température mesurée
-
-
+int test=0;
 
 
 	void TIM4_IRQHandler();
@@ -89,22 +83,15 @@ float temperature = 0.0;  // Stocke la température mesurée
 				LCD_Adress(5);
 				for(unsigned i =0; i<1e1;i++);
 				RCC->AHB1ENR |= RCC_AHB2ENR_GPIOCEN; // Activation de l'horloge pour GPIOC
-				
-
-			
-			
-
-
-
 
 
 				test++;
 	    	}
 
-	    
+
 			menu_demarrage();
 
-	    	
+
 
 	    }
 	}
@@ -487,14 +474,14 @@ void fonction_paramètre(){
 		//croissance
 
 		while(1) {
-			
+
 		calcul_dist();
 
-							
-	
+
+
 
 	}
-		
+
 	}
 
 
@@ -1240,26 +1227,6 @@ void maj_progression(){
 
 }
 
-void menu_demarrage(){
-	while(1){
-
-
-
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(12);
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(1);
-	affichage_mot("lancer$le$compteur");
-
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(13);
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(5);
-	affichage_mot("parametres");
-
-}
-}
-
 
 // Gestion de TIM6 pour la période ON
 void TIM6_DAC_IRQHandler() {
@@ -1382,4 +1349,37 @@ void recuperation_temperature(){
 	affichage_mot(valeur);
 	for(unsigned i =0; i<1e4;i++);
 
+}
+
+
+
+void lcd_clear(){
+	for(unsigned b =8; b<16;b++){
+		for(unsigned a =0; a<16;a++){
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(b);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(a);
+			affichage_mot("$");
+		}
+	}
+
+}
+
+void curseur(int x, int y){
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(x);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(y);
+		LCD_Communication(2);
+		LCD_Communication(10);
+}
+
+void eff_curseur(int x, int y){
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(x);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(y);
+		LCD_Communication(2);
+		LCD_Communication(0);
 }
