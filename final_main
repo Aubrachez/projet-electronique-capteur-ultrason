@@ -100,7 +100,7 @@ int test=0;
 
 void menu_demarrage(){
 
-
+	 TIM2->CR1 &= ~TIM_CR1_CEN_Msk;
 	lcd_clear();
 
 	valeur_curseur=0;
@@ -992,7 +992,12 @@ void aff(const char* str){
 
 
 void calcul_dist(){
-
+	TIM2->CR1 |= ~TIM_CR1_CEN_Msk;
+	if ((GPIOA->IDR & GPIO_IDR_ID4) != 0  ) {
+				lcd_clear();
+				while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+				menu_demarrage(); // Appeler la fonction chargement
+			}
 char vraiment_pulse[4] = "non";      // Variable pour vérifier si un pulse est détecté
 
 // Fonction d'affichage (à adapter selon ton écran)
@@ -1005,7 +1010,7 @@ void affichage(uint32_t counter) {
 //ConfigureModulationTimer();
 if (start_measurement) {
 
-
+	for(unsigned i =0; i<1e5;i++);
             start_measurement = 0;
             GeneratePulse();          // Générer le pulse de 5 µs
             TIM3->CNT = 0;            // Réinitialiser pour tHOLDOFF
