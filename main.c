@@ -1,397 +1,119 @@
+
 #include "main.h"
 #include "uc_configuration.h"
-#define TRIGGER_PIN 9  // PA9
-#define PRESCALER 4
+float voltage;
+float temperature;
+int distance_max = 300;
+int distance_min=20;
+int pourcentage_progression=0;
+int valeur_division = 0;
+int valeur_curseur=0;
+int valeur_curseur_secondaire=0;
+uint8_t start_measurement = 1; // Flag pour démarrer une nouvelle mesure
+volatile distance_cm = 300;     // Distance calculée
+uint8_t echo_valid = 0;       // Indique qu'une distance valide est prête
+uint8_t sensor_error = 0;     // Erreur (défaillance ou hors portée)
 
-// Buzzer = PA5
+int distance = 120;
+float temperature = 0.0;  // Stocke la température mesurée
+uint16_t adc_value = 0;   // Valeur brute de l'ADC
+uint8_t buzzer_enable = 0; // État du buzzer (1 = activé, 0 = désactivé)
+uint16_t modulation_period=100;
 
 
-/*! 
+/*!
  * Entry point of your source code
  */
-// Mes variables marius
- uint8_t start_measurement = 1; // Flag pour démarrer une nouvelle mesure
- uint16_t distance_cm = 100;     // Distance calculée
- uint8_t echo_valid = 0;       // Indique qu'une distance valide est prête
- uint8_t sensor_error = 0;     // Erreur (défaillance ou hors portée)
+uint8_t test=0;//Permet de ne faire qu'une seule fois la routine d'initialisation du LCD
 
- float temperature = 0.0;  // Stocke la température mesurée
- uint16_t adc_value = 0;   // Valeur brute de l'ADC
- uint8_t buzzer_enable = 0; // État du buzzer (1 = activé, 0 = désactivé)
- uint16_t modulation_period = 1000;
- uint16_t distance_max = 300;
- uint16_t distance_min = 2;
 
+int main()
+{
 
-// Les variables de grec
-uint8_t Compteur=1; //Permet de connaitre l'état du rotary encoder
-	uint8_t Echelle=0; //Communique au programme que le bouton poussoir du menu echelle a été enfoncé (via une interruption)
-	uint8_t Mesure=0; //Communique au programme que le bouton poussoir du menu mesure a été enfoncé (via une interruption)
-    uint8_t j=0; //indice utilisé dans la gestion de l'interruption pour le bouton mesures. Permet de figer l'affichage tant qu'une nouvelle mesure n'a pas ete faite
-    uint8_t p=0; //indice utilisé dans la gestion de l'interruption pour le bouton echelle. Permet de figer l'affichage tant que l'échelle n'est pas changée
-    uint8_t calibre=1; //Variable utilisée pour la sélection du calibre de mesure (3.3V ou 33V)
-    uint8_t Clear_mesure=0; //indique si il faut clear l'affichage du lcd (lors du changement de menu par exemple)
-    uint8_t Clear_Scale=0; //idem que pour Clear_mesure
-    uint8_t	Scan_btn=0; //Utilisé pour compter le nombres de mesures de l'adc et déclancher une interruption quand le tableau ADC_Value est plein
-    uint8_t  Modif_compteur = 0; //Indique que le rotary encoder à été tourné
-    uint8_t test=0;//Permet de ne faire qu'une seule fois la routine d'initialisation du LCD
-	uint32_t ADC_Value[60]; //tableau contenant les 60 dernières mesures faites par l'adc. Réinitialisé à la fréquence du TIM3
-	uint32_t Indice_Value=0; //Indice utilisé pour suivre la position actuelle dans le tableau ADC_Value
-	double ADC_Affichage[60];//tableau pour stocker les valeurs converties de l'adc
-	double ADC_Min=4095; //Différence de potentiel minimale mesurée par l'adc, initialisé à 4095 (nombre décimal max sur 12 bits)
-	double ADC_Max; //Différence de potentiel maximale mesurée par l'adc
-	double dc_component; //variable reprenant la valeur de la composante dc du signal
+    //! Configuration du microcontrolleur (GPIOs/Peripheriques/Horloge)
 
 
+	ConfigureMicroController();
+    while(1)
+    {
+    	if(test==0){
+    		LCD_Configuration(0b00000011);
+    						for(int i = 0; i<1e4;i++);
+    						LCD_Configuration(0b00000011);
+    						for(int i = 0; i<1e4;i++);
+    						LCD_Configuration(0b00000011);
+    						for(int i = 0; i<1e4;i++);
+    						LCD_Configuration(0b00000010);
 
-	void TIM4_IRQHandler();
+    						LCD_Configuration(0b00000010);
+    						LCD_Configuration(0b00001000);
 
-	int main()
-	{
+    						LCD_Configuration(0b00000000);
+    						LCD_Configuration(0b00001000);
 
+    						LCD_Configuration(0b00000000);
+    						LCD_Configuration(0b00000001);
 
-	    //! Configuration du microcontrolleur (GPIOs/Peripheriques/Horloge)
-		ConfigureMicroController();
-		EnableInterrupts();
+    						LCD_Configuration(0b00000000);
+    						LCD_Configuration(0b00000111);
+    						for(unsigned i =0; i<1e5;i++);//delay
+    						LCD_Configuration(0b00000000);//Return Home
+    						LCD_Configuration(0b00000010);
+    						for(unsigned i =0; i<1e5;i++);//delay
+    						LCD_Configuration(0b00000000);//Display ON/OFF Control
+    						LCD_Configuration(0b00001100);
+    		test++;
 
 
-	    while(1)
-	    {
-	    	if(test==0)
-	    	{
-				LCD_Configuration(0b00000011);
-				for(int i = 0; i<1e4;i++);
-				LCD_Configuration(0b00000011);
-				for(int i = 0; i<1e4;i++);
-				LCD_Configuration(0b00000011);
-				for(int i = 0; i<1e4;i++);
-				LCD_Configuration(0b00000010);
+//
+    	}
 
-				LCD_Configuration(0b00000010);
-				LCD_Configuration(0b00001000);
+    	TIM7->PSC = 4000-1;
+    			 //TIM7->ARR = 45; //// 45 MIN MAX 200
+    		     TIM7->DIER |= TIM_DIER_UIE;
+    			 TIM7->CR1 |= TIM_CR1_CEN;
+    		menu_demarrage();
 
-				LCD_Configuration(0b00000000);
-				LCD_Configuration(0b00001000);
-
-				LCD_Configuration(0b00000000);
-				LCD_Configuration(0b00000001);
-
-				LCD_Configuration(0b00000000);
-				LCD_Configuration(0b00000111);
-				for(unsigned i =0; i<1e5;i++);//delay
-				LCD_Configuration(0b00000000);//Return Home
-				LCD_Configuration(0b00000010);
-				for(unsigned i =0; i<1e5;i++);//delay
-				LCD_Configuration(0b00000000);//Display ON/OFF Control
-				LCD_Configuration(0b00001100);
-
-				LCD_Adress(8);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(5);
-				for(unsigned i =0; i<1e1;i++);
-				RCC->AHB1ENR |= RCC_AHB2ENR_GPIOCEN; // Activation de l'horloge pour GPIOC
-				// Configuration de PC13 en mode entrée (bouton utilisateur)
-				GPIOC->MODER &= ~GPIO_MODER_MODE13_Msk; // Réinitialise le mode de PC13 (par défaut en entrée)
-
-				//menu_demarrage();
-				//fonction de sonar
-
-
-
-
-
-				test++;
-	    	}
-	    	fonction_chargement();
-	    	//ModulationPeriod(distance_cm);
-
-
-	    	//temperature
-	    	//ADC_IRQHandler();
-	    						for(unsigned i =0; i<1e1;i++);
-	    						LCD_Adress(8);
-	    						for(unsigned i =0; i<1e1;i++);
-	    						LCD_Adress(0);
-	    						char str[20];
-	    						sprintf(str, "%d", temperature);
-	    						affichage_mot(str);
-
-
-	    }
-	}
-
-	void fonction_chargement(){
-		//croissance
-
-		while(1) {
-
-			 for (unsigned i = 0; i < 100000; i++);
-			// Vérifie si PC13 est à l'état haut (non pressé, car le bouton tire vers 0 lorsqu'appuyé)
-				 if(GPIOC->IDR & GPIO_IDR_ID13){}
-				 else// PC13 à l'état bas
-				        {
-				            // Appel de la fonction lorsque le bouton n'est pas pressé (PC13 haut)
-				            menu_demarrage();
-
-				            // Délai pour éviter des appels multiples inutiles
-				            for (unsigned i = 0; i < 1000; i++); // Attendre ~quelques ms
-				        }
-		for (int place = 4; place <= 22; place++) {
-			if(place<=15){
-						LCD_Adress(13);
-						for(unsigned i =0; i<1e1;i++);
-						LCD_Adress(place);
-						for(unsigned i =0; i<1e1;i++);
-						affichage_mot(")");
-						for(unsigned i =0; i<1e4;i++);
-			}
-			if(place>=15){
-							LCD_Adress(14);
-							for(unsigned i =0; i<1e1;i++);
-							LCD_Adress(place-15);
-							for(unsigned i =0; i<1e1;i++);
-							affichage_mot(")");
-							for(unsigned i =0; i<1e4;i++);
-						}
-
-					}
-		calcul_dist();
-		//décroissance
-		for (int place = 23; place >= 4; place--) {
-					if(place<=15){
-								LCD_Adress(13);
-								for(unsigned i =0; i<1e1;i++);
-								LCD_Adress(place);
-								for(unsigned i =0; i<1e1;i++);
-								affichage_mot("$");
-								for(unsigned i =0; i<1e4;i++);
-					}
-					if(place>=15){
-									LCD_Adress(14);
-									for(unsigned i =0; i<1e1;i++);
-									LCD_Adress(place-16);
-									for(unsigned i =0; i<1e1;i++);
-									affichage_mot("$");
-									for(unsigned i =0; i<1e4;i++);
-								}
-
-							}
-							//for(unsigned i =0; i<1;i++);
-
-							//LCD_Adress(8);
-							//for(unsigned i =0; i<1e1;i++);
-							//LCD_Adress(0);
-							//TIM2->CR1 |= TIM_CR1_CEN_Msk;
-
-							//char str[20];
-							//uint32_t timer_value = TIM2->CNT;
-							//sprintf(str, "%d", timer_value);
-							//affichage_mot(str);
-							//TIM2->CNT = 0;
-		calcul_dist();
-
-	}
-		//PWMDutyCycle();
-	}
-
-
-// Code de gestion du signal du bip sonore
-/*void PWMDutyCycle(uint16_t distance_cm) {
-    uint16_t distance_min = 2;  // Distance minimale (cm)
-    uint16_t distance_max = 300; // Distance maximale (cm)
-
-    uint16_t dutyCycle = 0;  // on commence avec un rapport cyclique initiale nul, après on évoluera en fonction de la distance
-
-    if (distance_cm <= distance_min) {
-        dutyCycle = 100; // bip maximal pour le rapport cyclique à 100%
-    } else if (distance_cm >= distance_max) {
-        dutyCycle = 0;   // Pas de bip
-    } else {
-        // on calcul le rapport cyclique proportionnel
-        dutyCycle = (distance_max - distance_cm) * 100 / (distance_max - distance_min); // formule de calcul du rapport cyclique en %
-    }
-
-    // On met à jour le rapport cyclique dans CCR1 (la largeur de l'impulsion)
-    TIM2->CCR1 = (TIM2->ARR) * dutyCycle / 100;
-}*/
-
-	/*void TIM7_IRQHandler(void) {
-	    if (TIM7->SR & TIM_SR_UIF) {
-	        TIM7->SR &= ~TIM_SR_UIF;
-
-
-	        if (distance_cm <= distance_min) {
-	            buzzer_enable = 1; // Bip continu
-	        } else if (distance_cm  >= distance_max ) {
-	            buzzer_enable = 0; // Pas de bip
-	        } else {
-	            buzzer_enable = !buzzer_enable; // Modulation
-	        }
-
-	        if (buzzer_enable) {
-	            GPIOA->MODER |= (2 << (5 * 2));  // on activer la sortie PWM sur PA5
-	        } else {
-	            GPIOA->MODER &= ~(3 << (5 * 2)); // on désactiver la sortie PWM (GPIO en entrée)
-	        }
-	    }
-	}
-
-	void ModulationPeriod(uint32_t distance) {
-	    if (distance_cm <= distance_min) {
-	        modulation_period = 100; // Bip continu
-	    } else if (distance_cm >= distance_max) {
-	        modulation_period = 0;   // Pas de bip
-	    } else {
-	        // Modulation proportionnelle à la distance
-	        modulation_period = 100 + ((distance_cm - distance_min) * 900) / (distance_max - distance_min);
-	    }
-
-	    // Mettre à jour TIM2->ARR
-	    TIM7->ARR = modulation_period - 1;
-	}*/
-
-	void TIM7_IRQHandler() {
-	    if (TIM7->SR & TIM_SR_UIF) {
-	        TIM7->SR &= ~TIM_SR_UIF;
-
-	        // Alterner l'état du buzzer et test github
-	        buzzer_enable = !buzzer_enable;
-	        if (buzzer_enable) {
-	            GPIOA->MODER |= (2 << (5 * 2));  // on active la sortie PWM sur PA8
-	        } else {
-	            GPIOA->MODER &= ~(3 << (5 * 2)); // on désactive la sortie PWM (GPIO en entrée)
-	        }
-	    }
-	}
-
-
-
-// STM32 OUT
-void SetGPIOAsOutput() {
-    GPIOA->MODER &= ~(3 << (2 * TRIGGER_PIN));
-    GPIOA->MODER |= (1 << (2 * TRIGGER_PIN)); // Mode sortie
-}
-
-
-
-// STM32 IN
-void SetGPIOAsInput() {
-    GPIOA->MODER &= ~(3 << (2 * TRIGGER_PIN)); // Mode entrée
-}
-
-
-
-
-// gestion de pulse
-void GeneratePulse() {
-    SetGPIOAsOutput();           // on configurer PA9 en sortie
-    GPIOA->ODR |= (1 << TRIGGER_PIN); // on met PA9 à HIGH
-    TIM4->CNT = 0;               // on réinitialise le compteur
-    TIM4->CR1 |= TIM_CR1_CEN;    // on démarrer TIM4 pour 5 µs
-    while (!(TIM4->SR & TIM_SR_UIF)); // Attendre débordement
-    TIM4->SR &= ~TIM_SR_UIF;     // on effacer le drapeau
-    GPIOA->ODR &= ~(1 << TRIGGER_PIN); // on met PA9 à LOW
-    SetGPIOAsInput();            // Configurer PA9 en entrée
-}
-
-
-
-
-// Programme d'interruption sur la ligne 9 (gestion des FM et FD)
-void EXTI9_5_IRQHandler() {
-    if (EXTI->PR1 & (1 << TRIGGER_PIN)) {
-        if (GPIOA->IDR & (1 << TRIGGER_PIN)) {
-            // Front montant : on démarre le timer pour mesurer l’écho
-            TIM3->CNT = 0;             // On réinitialiser le compteur
-            TIM3->ARR = 18500;         // On configurer tIN_MAX
-            TIM3->CR1 |= TIM_CR1_CEN;  // On démarrer TIM3
-        } else {
-            // Front descendant : on arrêter le timer et on calcule la durée
-            TIM3->CR1 &= ~TIM_CR1_CEN;
-            uint32_t echo_duration = TIM3->CNT;
-
-            if (echo_duration >= 115 && echo_duration <= 18500) {
-                distance_cm = (echo_duration * 343) / (2 * 10000); // Calcul distance
-                echo_valid = 1;
-
-                // Ensuite on démarre le timer pour la prochaine mesure
-                TIM5->CNT = 0;
-                TIM5->CR1 |= TIM_CR1_CEN;
-            } else {
-                sensor_error = 2; // Distance hors portée
-            }
-        }
-        EXTI->PR1 |= (1 << TRIGGER_PIN); // On éfface le drapeau d’interruption
     }
 }
 
 
 
+void recuperation_temperature(){
+	RCC->AHB2ENR |= RCC_AHB2ENR_ADCEN;
 
-//Programme d'interruption sur TIM3
-void TIM3_IRQHandler() {
-    if (TIM3->SR & TIM_SR_UIF) {
-    	TIM3->CR1 &= ~TIM_CR1_CEN;  // On arrête de compter
-        TIM3->SR &= ~TIM_SR_UIF;    // Effacer le drapeau
-        start_measurement = 1;      // Si débordement avant réception du front montant
-        if (TIM3->ARR == 750) {
-            sensor_error = 1;       // Pas de front montant (capteur défaillant)
-        } else if (TIM3->ARR == 18500) {
-            sensor_error = 2;      // Pas de front descendant (distance max dépassée)
-        }
-    }
+	// Activer l'ADC
+	ADC1->CR &= ~ADC_CR_DEEPPWD;       // Désactiver le mode Deep Power Down
+	ADC1->CR |= ADC_CR_ADVREGEN;       // Activer le régulateur ADC
+	for (volatile int i = 0; i < 10000; i++); // Attendre la stabilisation
+
+	// Activer l'ADC
+	ADC1->ISR |= ADC_ISR_ADRDY;        // Effacer le drapeau ADRDY
+	ADC1->CR |= ADC_CR_ADEN;           // Activer l'ADC
+	while (!(ADC1->ISR & ADC_ISR_ADRDY)); // Attendre l'activation complète
+	// Démarrer la conversion
+	ADC1->CR |= ADC_CR_ADSTART;        // Lancer la conversion
+
+	while (!(ADC1->ISR & ADC_ISR_EOC)); // Attendre la fin de la conversion
+
+	// Lire et retourner la valeur convertie
+	volatile uint32_t temp =(ADC1->DR);// Récupérer la valeur numérique
+	float voltage = (ADC1->DR * 4095) / 5000;
+	char valeur[3];
+	ADC1->SQR1;
+	sprintf(valeur, "%lu",ADC1->DR);  // Convertit le compteur en chaîne de caractères
+	LCD_Adress(8);
+	for(unsigned i =0; i<1e1;i++);
+	LCD_Adress(0);
+	for(unsigned i =0; i<1e1;i++);
+	affichage_mot(valeur);
+	for(unsigned i =0; i<1e4;i++);
+
 }
 
 
-// Interruption sur TMR5 (delay avant la prochaine mesure)
-void TIM5_IRQHandler() {
-    if (TIM5->SR & TIM_SR_UIF) {
-    	TIM5->CR1 &= ~TIM_CR1_CEN;	// on arrête de compter
-        TIM5->SR &= ~TIM_SR_UIF;  // Effacer le drapeau
-        start_measurement = 1;   // Déclencher une nouvelle mesure
-    }
-}
-
-/*// Interruption sur TMR5 (delay avant la prochaine mesure)
-void TIM5_IRQHandler() {
-	TIM5->CR1 &= ~TIM_CR1_CEN;	// on arrête de compter
-	TIM5->SR &= ~TIM_SR_UIF;    // On efface le drapeau
-	GeneratePulse();            // Générer le pulse de 5 µs
-    TIM3->CNT = 0;              // Réinitialiser pour tHOLDOFF
-	 TIM3->ARR = 750;           // Configure tHOLDOFF (750 µs)
-	TIM3->CR1 |= TIM_CR1_CEN;  // Démarrer le timer
-
-}   */
 
 
-
-
-
-// Calcul de la température
-float CalculateTemperature(uint16_t adc_value) {
-    float voltage = ((float)adc_value / 4095.0) * 3.3;  // On Convertir la valeur ADC en tension
-    return (voltage - 0.5) / 0.02;                      // TMP37 : 500 mV à 25°C, 20 mV par °C
-}
-
-// Gestionnaire d'interruption pour TIM2
-/*void TIM2_IRQHandler(void) {
-    if (TIM2->SR & TIM_SR_UIF) {
-        TIM2->SR &= ~TIM_SR_UIF;           // on Efface le drapeau
-        ADC1->CR |= ADC_CR_ADSTART;      // on Lance une conversion ADC
-    }
-}*/
-
-// Gestionnaire d'interruption pour ADC1
-/*void ADC_IRQHandler(void) {
-    if (ADC1->ISR & ADC_ISR_EOC) {           // Vérifier fin de conversion
-        adc_value = ADC1->DR;              // Lire la valeur brute de l'ADC
-        temperature = CalculateTemperature(adc_value); // Calculer la température
-    }
-}*/
-
-
-
-// Les codes de grec !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 void LCD_Configuration(uint8_t mot)
 {
@@ -780,6 +502,22 @@ void affichage_mot(const char *mot ){
 
 	    }}
 
+void fonction_chargement(){
+	//croissance
+
+	while(1) {
+		void EXTI9_5_IRQHandler(void) {
+			 lcd_clear();
+			 toto();            // Appeler la fonction
+		    if (EXTI->PR1 & EXTI_PR1_PIF7) { // Vérifier si EXTI7 a généré l'interruption
+		        EXTI->PR1 |= EXTI_PR1_PIF7;  // Effacer le drapeau d'interruption
+
+		    }
+		}
+		 for (unsigned i = 0; i < 100000; i++);
+		 calcul_dist();
+			}
+}
 
 void aff(const char* str){
 	for(unsigned i =0; i<1;i++);
@@ -792,261 +530,699 @@ void aff(const char* str){
 
 
 
-
 void calcul_dist(){
 
+
+volatile uint32_t pulseCounter = 0;  // Compteur de pulses
 char vraiment_pulse[4] = "non";      // Variable pour vérifier si un pulse est détecté
 
-// Fonction d'affichage (à adapter selon ton écran)
-void affichage(uint32_t counter) {
-    char str[20];
-    sprintf(str, "%lu", counter);  // Convertit le compteur en chaîne de caractères
-    aff(str);
-    // Code spécifique pour afficher `str` sur ton écran (ex. LCD)
+// Fonction de délai en microsecondes
+void delay_us(uint32_t us) {
+    TIM2->CNT = 0;
+    while (TIM2->CNT < us);
 }
 
-if (start_measurement) {
-            start_measurement = 0;
-            GeneratePulse();          // Générer le pulse de 5 µs
-            TIM3->CNT = 0;            // Réinitialiser pour tHOLDOFF
-            TIM3->ARR = 750;          // Configure tHOLDOFF (750 µs)
-            TIM3->CR1 |= TIM_CR1_CEN; // Démarrer le timer
-        }
+// Configuration de PA9 en sortie
+void configure_GPIO_PA9_output(void) {
+    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN;  // Activer l'horloge GPIOA
+    GPIOA->MODER &= ~GPIO_MODER_MODE9_Msk;  // Effacer les bits de configuration
+    GPIOA->MODER |= GPIO_MODER_MODE9_0;     // PA9 en sortie
+}
 
-        if (echo_valid) {
-            echo_valid = 0;
+// Configuration de PA9 en entrée
+void configure_GPIO_PA9_input(void) {
+    GPIOA->MODER &= ~GPIO_MODER_MODE9_Msk;  // PA9 en entrée (reset value = 00)
+}
+
+// Configuration de TIM2 pour délai précis en µs
+void configure_TIM2(void) {
+    RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;  // Activer l'horloge de TIM2
+    TIM2->PSC = 3;                    // Prescaler
+    TIM2->ARR = 0xFFFF;                    // Période maximale
+    TIM2->CR1 |= TIM_CR1_CEN;              // Démarre le timer
+}
+
+// Fonction d'affichage (à adapter selon ton écran)
+
+
+// Fonction principale de récupération de distance
+
+    configure_TIM2();                // Configuration du timer pour les délais
+
+    // Étape 1 : Configurer PA9 en sortie et générer un signal HIGH pendant 3 µs
+    configure_GPIO_PA9_output();
+    GPIOA->BSRR = GPIO_BSRR_BS9;     // PA9 HIGH
+    delay_us(3);                     // Attente de 3 µs
+    GPIOA->BSRR = GPIO_BSRR_BR9;     // PA9 LOW
+
+    // Étape 2 : Reconfigurer PA9 en entrée et attendre 750 µs
+    configure_GPIO_PA9_input();
+    delay_us(750);
+
+    // Étape 3 : Détection de pulses à 40 kHz
+    pulseCounter = 0;
+    uint32_t timeout = 1000;  // Timeout en µs pour éviter une boucle infinie
+    while (timeout--) {
+        if (GPIOA->IDR & GPIO_IDR_ID9_Msk) {  // Si PA9 est à l'état haut (détection pulse)
+            pulseCounter = 0;
+            while (GPIOA->IDR & GPIO_IDR_ID9_Msk) {  // Tant que le pulse est présent
+                delay_us(1);  // Délai de 1 µs
+                pulseCounter++;  // Incrémente le compteur chaque µs
+            }
+            int distance_cm = (pulseCounter*0.2323);
             for(unsigned i =0; i<1;i++);
-                        LCD_Adress(8);
-                        for(unsigned i =0; i<1e1;i++);
-                        LCD_Adress(0);
-                        affichage_mot("$$$$$$$$$$$$$$");
-                        char str[20];
+            LCD_Adress(8);
+            for(unsigned i =0; i<1e1;i++);
+            LCD_Adress(0);
+            affichage_mot("$$$$$$$$$$$$$$");
+            char str[20];
 
-                        	sprintf(str, "%d", distance_cm);
-            				aff(str);  // Affiche le nombre de µs du pulse détecté
-            				for(unsigned i =0; i<1;i++);
-            				LCD_Adress(8);
-            				for(unsigned i =0; i<1e1;i++);
-            				LCD_Adress(3);
-            				affichage_mot("cm");
-            				maj_progression();
-            				progression(distance_cm);
-            				 //PWMDutyCycle(distance_cm);
-
-                       }
+            	sprintf(str, "%d", distance_cm);
+				aff(str);  // Affiche le nombre de µs du pulse détecté
+				for(unsigned i =0; i<1;i++);
+				LCD_Adress(8);
+				for(unsigned i =0; i<1e1;i++);
+				LCD_Adress(3);
+				affichage_mot("cm");
 
 
+				progression(distance_cm);
 
-
+				for(unsigned i =0; i<1e5;i++);
+            //quand on appui sur le bouton bleu on lance la fonction calcul distance
+            	if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 || (GPIOB->IDR & GPIO_IDR_ID0) != 0) {
+            		lcd_clear();
+            		while((GPIOA->IDR & GPIO_IDR_ID4) != 0 || (GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+            		            menu_demarrage(); // Appeler la fonction chargement
+            		        }
 
 
             return;
+        }
+        delay_us(1);  // Attente entre deux vérifications
+    }
+
+
+
+
+
 }
 
-
-
-
-
-
-
-
-
 void progression(int distance){
-	if (distance > 10) {
+	pourcentage_progression = (distance_max-distance_min) / 20;
+	valeur_division = (distance-distance_min) / pourcentage_progression;
+	
+	if(distance<=distance_min){
 		for(unsigned i =0; i<1;i++);
-		LCD_Adress(12);
+		LCD_Adress(14);
 		for(unsigned i =0; i<1e1;i++);
 		LCD_Adress(0);
-		affichage_mot(")");
-	}
-	if (distance > 20){
+		affichage_mot("$$$");
 		for(unsigned i =0; i<1;i++);
-		LCD_Adress(12);
+		LCD_Adress(14);
 		for(unsigned i =0; i<1e1;i++);
-		LCD_Adress(1);
-	    affichage_mot(")");
+		LCD_Adress(0);
+		affichage_mot("a");
 	}
-	if (distance > 30){
+	
+	if(distance_min<distance<=distance_min+distance_min){
 			for(unsigned i =0; i<1;i++);
-			LCD_Adress(12);
+			LCD_Adress(14);
 			for(unsigned i =0; i<1e1;i++);
-			LCD_Adress(2);
-		    affichage_mot(")");
+			LCD_Adress(0);
+			affichage_mot("$$$");
+			for(unsigned i =0; i<1;i++);
+			LCD_Adress(14);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(0);
+			affichage_mot("b");
 		}
-	if (distance > 40){
+	
+	if(distance_min+distance_min<distance<=distance_min+distance_min+distance_min){
 				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
+				LCD_Adress(14);
 				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(3);
-			    affichage_mot(")");
-			}
-	if (distance > 50){
+				LCD_Adress(0);
+				affichage_mot("$$$");
 				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
+				LCD_Adress(14);
 				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(4);
-			    affichage_mot(")");
+				LCD_Adress(0);
+				affichage_mot("c");
 			}
-	if (distance > 60){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(5);
-			    affichage_mot(")");
-			}
-	if (distance > 70){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(6);
-			    affichage_mot(")");
-			}
-	if (distance > 80){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(7);
-			    affichage_mot(")");
-			}
-	if (distance > 90){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(8);
-			    affichage_mot(")");
-			}
-	if (distance > 100){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(9);
-			    affichage_mot(")");
-			}
-	if (distance > 110){
-				for(unsigned i =0; i<1;i++);
-				LCD_Adress(12);
-				for(unsigned i =0; i<1e1;i++);
-				LCD_Adress(10);
-			    affichage_mot(")");
-			}
-	if (distance > 120){
+	
+	for(unsigned i =0; i<5;i++);
+
+	if(valeur_division >0){
+			for(unsigned i =0; i<1;i++);
+			LCD_Adress(9);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(4);
+			affichage_mot("$$$$$$$");
+		}
+	
+	// on clear l'affichage de la mesure ////////////////////////////////////////////////////
+	for (int i=0; i<=15; i++){
+						for(unsigned i =0; i<1;i++);
+						LCD_Adress(12);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(i);
+						affichage_mot("$");
+				}
+	
+				for (int i=0; i<4; i++){
+							for(unsigned i =0; i<1;i++);
+							LCD_Adress(13);
+							for(unsigned i =0; i<1e1;i++);
+							LCD_Adress(i);
+							affichage_mot("$");
+
+					}
+
+
+	if(valeur_division <=4 ){
+		for (int i=0; i<=15; i++){
 					for(unsigned i =0; i<1;i++);
 					LCD_Adress(12);
 					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(11);
-				    affichage_mot(")");
-				}
-	if (distance > 130){
-					for(unsigned i =0; i<1;i++);
-					LCD_Adress(12);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(12);
-				    affichage_mot(")");
-				}
-	if (distance > 140){
-					for(unsigned i =0; i<1;i++);
-					LCD_Adress(12);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(13);
-				    affichage_mot(")");
-				}
-	if (distance > 150){
-					for(unsigned i =0; i<1;i++);
-					LCD_Adress(12);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(14);
-				    affichage_mot(")");
-				}
-	if (distance > 160){
-					for(unsigned i =0; i<1;i++);
-					LCD_Adress(12);
-					for(unsigned i =0; i<1e1;i++);
-					LCD_Adress(15);
-				    affichage_mot(")");
-				}
-	if (distance > 170){
+					LCD_Adress(i);
+					affichage_mot(")");
+			}
+			for (int i=0; i<(4-valeur_division-1); i++){
 						for(unsigned i =0; i<1;i++);
 						LCD_Adress(13);
 						for(unsigned i =0; i<1e1;i++);
-						LCD_Adress(0);
-					    affichage_mot(")");
-					}
-	if (distance > 180){
-							for(unsigned i =0; i<1;i++);
-							LCD_Adress(13);
-							for(unsigned i =0; i<1e1;i++);
-							LCD_Adress(1);
-						    affichage_mot(")");
-						}
-	if (distance > 190){
-							for(unsigned i =0; i<1;i++);
-							LCD_Adress(13);
-							for(unsigned i =0; i<1e1;i++);
-							LCD_Adress(2);
-						    affichage_mot(")");
-						}
-	if (distance > 200){
-							for(unsigned i =0; i<1;i++);
-							LCD_Adress(13);
-							for(unsigned i =0; i<1e1;i++);
-							LCD_Adress(3);
-						    affichage_mot(")");
-						}
+						LCD_Adress(i);
+						affichage_mot(")");
+				}
+	}else{
+		for (int i=0; i<=(19-valeur_division-1); i++){
+		for(unsigned i =0; i<1;i++);
+		LCD_Adress(12);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(i);
+		affichage_mot(")");
 }
-
-
-
-
-void maj_progression(){
-	for(unsigned place =0; place<16;place++){
-									for(unsigned i =0; i<1;i++);
-									LCD_Adress(12);
-									for(unsigned i =0; i<1e1;i++);
-									LCD_Adress(place);
-								    affichage_mot("$");
-	}
-	for(unsigned place =0; place<4;place++){
-										for(unsigned i =0; i<1;i++);
-										LCD_Adress(13);
-										for(unsigned i =0; i<1e1;i++);
-										LCD_Adress(place);
-									    affichage_mot("$");
-		}
-
 }
+}
+void toto(){
 
-void menu_demarrage(){
+			for(unsigned i =0; i<1;i++);
+			LCD_Adress(8);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(0);
+			affichage_mot("hello");
+			for(unsigned i =0; i<1e1;i++);
+}
+void fonction_paramètre(){
+	valeur_curseur=2;
 	while(1){
 
 
+		//gestion curseur
+		switch (valeur_curseur) {
+		        case 2:
+		        	eff_curseur(12, 0);
+		        	eff_curseur(13, 4);
+		            curseur(8, 0);
+		            break;
+		        case 3:
+		        	eff_curseur(8, 0);
+					eff_curseur(13, 4);
+		            curseur(12, 0);
+		            break;
+		        case 4:
+		        	eff_curseur(8, 0);
+					eff_curseur(12,0);
+		            curseur(13, 4);
+		            break;
+		        default:
+		            // Gestion par défaut si nécessaire
+		            break;
+		    }
 
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(12);
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(1);
-	affichage_mot("lancer$le$compteur");
+		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0){
 
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(13);
-	for(unsigned i =0; i<1e1;i++);
-	LCD_Adress(5);
-	affichage_mot("parametres");
+					while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+					switch (valeur_curseur) {
+							        case 2:
+							        	valeur_curseur=3;
+							            break;
+							        case 3:
+							        	valeur_curseur=4;
+							            break;
+							        case 4:
+										valeur_curseur=2;
+										break;
 
+							        default:
+							            // Gestion par défaut si nécessaire
+							            break;
+							    }
+			}
+
+		if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==2 ) {
+					lcd_clear();
+					while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+					fct_gestion_valeur_max(); // Appeler la fonction paramètre
+				}
+		if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==3 ) {
+					lcd_clear();
+					while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+					fct_gestion_valeur_min(); // Appeler la fonction paramètre
+				}
+		if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==4 ) {
+					lcd_clear();
+					while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+					menu_demarrage(); // Appeler la fonction paramètre
+				}
+
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(8);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(1);
+		affichage_mot("distance$max");
+
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(12);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(1);
+		affichage_mot("distance$min");
+
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(13);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(5);
+		affichage_mot("retour");
+//		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0) {
+//				lcd_clear();
+//				while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+//				menu_demarrage(); // Appeler la fonction chargement
+//					        }
+
+	}
+}
+
+void menu_demarrage(){
+
+
+	lcd_clear();
+
+	valeur_curseur=0;
+	while(1){
+
+
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(12);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(1);
+		affichage_mot("lancer$le$compteur");
+
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(13);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(5);
+		affichage_mot("parametres");
+
+		//gestion du curseur
+		if (valeur_curseur==0){
+			curseur(12,0);
+		}
+
+		if (valeur_curseur==1){
+				curseur(13,4);
+			}
+		//quand on appui sur le bouton bleu on lance une fonction
+		if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==0 ) {
+			lcd_clear();
+			while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+			fonction_chargement(); // Appeler la fonction chargement
+		}
+
+		if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur==1 ) {
+			lcd_clear();
+			while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+			fonction_paramètre(); // Appeler la fonction paramètre
+		}
+
+		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0){
+			lcd_clear();
+			while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+			if(valeur_curseur==0)
+			{
+				valeur_curseur++;
+			}
+			else
+			{
+				valeur_curseur--;
+			}
+			}
+
+
+
+	}
+}
+void fct_gestion_valeur_max(){
+	lcd_clear();
+	valeur_curseur_secondaire=0;
+	curseur(12,0);
+	while(1){
+		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0){
+					lcd_clear();
+					while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+					switch(valeur_curseur_secondaire)
+					{
+					case 0:
+						curseur(9,4);
+						valeur_curseur_secondaire=1;
+
+
+						break;
+					case 1:
+						valeur_curseur_secondaire=2;
+						curseur(13,4);
+						break;
+					case 2:
+						valeur_curseur_secondaire=0;
+						curseur(12,0);
+						break;
+					}
+
+			}
+
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(8);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(1);
+			affichage_mot("distance$max");
+
+			char str[20];
+			sprintf(str, "%d", distance_max);
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(9);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(0);
+			affichage_mot(str);
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(12);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(1);
+			affichage_mot("plus");
+
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(9);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(5);
+			affichage_mot("moins");
+
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(13);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(5);
+			affichage_mot("retour");
+
+// augmente la distance max
+			if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur_secondaire==0 ) {
+
+						while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+						distance_max=distance_max+10;
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(0);
+						affichage_mot("$$$");
+						char str[20];
+						sprintf(str, "%d", distance_max);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(0);
+						affichage_mot(str);
+
+					}
+// diminue la distance max
+			if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur_secondaire==1 ) {
+
+						while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+						distance_max=distance_max-10;
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(0);
+						affichage_mot("$$$");
+						char str[20];
+						sprintf(str, "%d", distance_max);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(0);
+						affichage_mot(str);
+					}
+// ramene au menu parametre
+						if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur_secondaire==2 ) {
+									lcd_clear();
+									while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+									fonction_paramètre(); // Appeler la fonction paramètre
+								}
 }
 }
 
+void fct_gestion_valeur_min(){
+
+	lcd_clear();
+	valeur_curseur_secondaire=0;
+	curseur(12,0);
+	while(1){
+		if ((GPIOB->IDR & GPIO_IDR_ID0) != 0){
+					lcd_clear();
+					while((GPIOB->IDR & GPIO_IDR_ID0) != 0){}//fonction anti rebond
+					switch(valeur_curseur_secondaire)
+					{
+					case 0:
+						curseur(9,4);
+						valeur_curseur_secondaire=1;
 
 
+						break;
+					case 1:
+						valeur_curseur_secondaire=2;
+						curseur(13,4);
+						break;
+					case 2:
+						valeur_curseur_secondaire=0;
+						curseur(12,0);
+						break;
+					}
+
+			}
 
 
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(8);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(1);
+			affichage_mot("distance$min");
+
+			char str[20];
+			sprintf(str, "%d", distance_min);
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(9);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(0);
+			affichage_mot(str);
+
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(12);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(1);
+			affichage_mot("plus");
 
 
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(9);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(5);
+			affichage_mot("moins");
 
 
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(13);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(5);
+			affichage_mot("retour");
+
+// augmente la distance max
+			if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur_secondaire==0 ) {
+
+						while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+						distance_min=distance_min+10;
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(0);
+						affichage_mot("$$$");
+						char str[20];
+						sprintf(str, "%d", distance_min);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(0);
+						affichage_mot(str);
+
+					}
+// diminue la distance max
+			if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur_secondaire==1 ) {
+
+						while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+						distance_min=distance_min-10;
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(0);
+						affichage_mot("$$$");
+						char str[20];
+						sprintf(str, "%d", distance_max);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(9);
+						for(unsigned i =0; i<1e1;i++);
+						LCD_Adress(0);
+						affichage_mot(str);
+					}
+// ramene au menu parametre
+						if ((GPIOA->IDR & GPIO_IDR_ID4) != 0 && valeur_curseur_secondaire==2 ) {
+									lcd_clear();
+									while((GPIOA->IDR & GPIO_IDR_ID4) != 0){}//fonction anti rebond
+									fonction_paramètre(); // Appeler la fonction paramètre
+								}
+}
+
+}
+
+void init_lcd(){
+				LCD_Configuration(0b00000011);
+				for(int i = 0; i<1e4;i++);
+				LCD_Configuration(0b00000011);
+				for(int i = 0; i<1e4;i++);
+				LCD_Configuration(0b00000011);
+				for(int i = 0; i<1e4;i++);
+				LCD_Configuration(0b00000010);
+
+				LCD_Configuration(0b00000010);
+				LCD_Configuration(0b00001000);
+
+				LCD_Configuration(0b00000000);
+				LCD_Configuration(0b00001000);
+
+				LCD_Configuration(0b00000000);
+				LCD_Configuration(0b00000001);
+
+				LCD_Configuration(0b00000000);
+				LCD_Configuration(0b00000111);
+				for(unsigned i =0; i<1e5;i++);//delay
+				LCD_Configuration(0b00000000);//Return Home
+				LCD_Configuration(0b00000010);
+				for(unsigned i =0; i<1e5;i++);//delay
+				LCD_Configuration(0b00000000);//Display ON/OFF Control
+				LCD_Configuration(0b00001100);
+}
+
+void lcd_clear(){
+	for(unsigned b =8; b<16;b++){
+		for(unsigned a =0; a<16;a++){
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(b);
+			for(unsigned i =0; i<1e1;i++);
+			LCD_Adress(a);
+			affichage_mot("$");
+		}
+	}
+
+}
+
+void curseur(int x, int y){
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(x);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(y);
+		LCD_Communication(2);
+		LCD_Communication(10);
+}
+
+void eff_curseur(int x, int y){
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(x);
+		for(unsigned i =0; i<1e1;i++);
+		LCD_Adress(y);
+		LCD_Communication(2);
+		LCD_Communication(0);
+}
+
+void EXTI15_10_IRQHandler(){
+    // Read the value of the button
+    if(GPIOC->IDR & GPIO_IDR_ID13){
+        // Turn the LED off
+       toto();
+    }
+    else{
+        // Turn the LED on
+      toto();
+    }
+
+    // Reset the interrupt flag
+    EXTI->PR1 |= EXTI_PR1_PIF13_Msk;
+}
 
 
+// Configuration du timer qui s'occupe de la modulation du bip
+void ConfigureModulationTimer() {
 
+  if(distance_cm < distance_max)
+  {
+	if (distance_cm <=distance_min) {
+		 TIM7->ARR = 0;      // on active la sortie PWM sur PA8
+		        } else if (distance_cm <=50) {
+		        	 TIM7->ARR = 45; // on désactive la sortie PWM (GPIO en entrée)
+		        }
+                   else if (distance_cm <=100){
+                	   TIM7->ARR = 90; // on désactive la sortie PWM (GPIO en entrée)
+			          }
 
+	                   else if (distance_cm <=150){
+	                	   TIM7->ARR = 150; // on désactive la sortie PWM (GPIO en entrée)
+				          }
+	                   else if (distance_cm <=200){
+	                   		    TIM7->ARR = 200; // on désactive la sortie PWM (GPIO en entrée)
+	                   		 }
+	                   else if (distance_cm <=250){
+	                   		      TIM7->ARR = 250; // on désactive la sortie PWM (GPIO en entrée)
+	                   					          }
+	                   else{
+	                	   TIM7->ARR = 300;
 
+	                   }
+  }
+  else{
+	  TIM2->CR1 &=  ~TIM_CR1_CEN_Msk;
+  }
+	}
+void TIM7_IRQHandler() {
+    if (TIM7->SR & TIM_SR_UIF) {
+        TIM7->SR &= ~TIM_SR_UIF;
+
+        // Alterner l'état du buzzer
+        buzzer_enable = !buzzer_enable;
+        if (buzzer_enable) {
+            GPIOA->MODER |= (2 << (5 * 2));  // on active la sortie PWM sur PA5
+        } else {
+            GPIOA->MODER &= ~(3 << (5 * 2)); // on désactive la sortie PWM (GPIO en entrée)
+        }
+    }
+}
 
 
