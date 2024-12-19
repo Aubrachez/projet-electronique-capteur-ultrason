@@ -1,7 +1,7 @@
 #include "main.h"
 #include "uc_configuration.h"
 
-#define WAIT_TIME 5000000000;
+#define WAIT_TIME 500;
 
 
 void ConfigureMicroController() {
@@ -14,10 +14,12 @@ void ConfigureMicroController() {
 
     // Configuration utilisateur (peut être modifiée)
     SetupGPIOs();
+    InitializeTimer2();
     InitializeTimer3();
     ADC_config();
     EnableInterrupts();
-
+    ConfigureModulationTimer();
+    SetupGPIOsPmw();
     __enable_irq();
 }
 
@@ -28,6 +30,29 @@ void SystemInit(void)
   SCB->CPACR |= (3UL << 20U)|(3UL << 22U);  /* Accès complet CP10 et CP11 */
 }
 
+void InitializeTimer2() {
+	//! Prescaler for a counting period of 1ms (internal clock: 4MHz => Prescaler : /4000)
+	//! By default, AHB Prescaler and APBx Prescalers are configured to /1
+	TIM2->PSC = 20-1;
+
+	// Specify the ARR value to 1000, for the counter to reset after 1 second
+	TIM2->ARR =500*2;
+	// Specify the compare value of channel 1 to 500 (half of the period)
+	TIM2->CCR1 =WAIT_TIME ;
+
+	// Specify that TIM2 should function as a PWM generator
+	TIM2->CCMR1 &= ~TIM_CCMR1_OC1M_Msk;
+	TIM2->CCMR1 |= 0b0110UL << TIM_CCMR1_OC1M_Pos;
+
+	TIM2->CCMR1 &= ~TIM_CCMR1_OC1PE_Msk;
+	TIM2->CCMR1 |= TIM_CCMR1_OC1PE;
+
+	// Enable Channel 1
+	TIM2->CCER |= TIM_CCER_CC1E;
+
+	// Enable counter
+	TIM2->CR1 |= TIM_CR1_CEN_Msk;
+}
 
 /*!
  * Activation de l'horloge pour les périphériques princpipaux
@@ -59,7 +84,7 @@ void EnableClockToPeripherals() {
 }
 
 void EnableInterrupts(){
-
+	 	NVIC_EnableIRQ(TIM2_IRQn);             // Activer l'interruption Timer 2
 		NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 	}
@@ -195,3 +220,16 @@ void ADC_config(){
 	 		ADC1->SQR1 |= ADC_SQR1_L_Msk;
 	 		ADC1->SQR1 &= ~ADC_SQR1_SQ1; // Clear SQ1 bits
 	 }
+
+void SetupGPIOsPmw() {
+
+	// Configure le buzzer sur (PA5) en alternate function (PWM from TIM2 channel 1),  voir le tuto du cours pour comprendre la cofiguration
+	// Reset PA5's mode of operation
+	GPIOA->MODER &= ~GPIO_MODER_MODE5_Msk;
+	// Set PA5 as alternate function
+	GPIOA->MODER |= 0b10UL << GPIO_MODER_MODE5_Pos;
+	//! Reset alternate function selection for PA5
+	GPIOA->AFR[0] &= ~GPIO_AFRL_AFSEL5_Msk;
+	//! Specify alternate function 1 for PA5
+	GPIOA->AFR[0] |= (1UL << GPIO_AFRL_AFSEL5_Pos);
+}
